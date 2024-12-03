@@ -5,7 +5,7 @@ import sys
 import math
 import numpy as np
 import os
-p = os.path.dirname(os.path.dirname((os.path.abspath(__file__))))
+p = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if p not in sys.path:
     sys.path.append(p)
 
@@ -51,12 +51,15 @@ def generate_descriptors(vlad, fea_folder, batch_num):
     return vlad_arr
 
 
-def evaluate_vlad(vlad, topk=1):
+def evaluate_vlad(vlad, seq, topk=1):
+    root = "/home/fuchencan/datasets/KITTI/datasets/sequences"
+    
     config_file = os.path.join(p, './config/config.yml')
     config = yaml.safe_load(open(config_file))
 
-    seq = config["test_config"]["seq"]
-    root = config["data_root"]["data_root_folder"]
+    #seq = config["test_config"]["seq"]
+    #root = config["data_root"]["data_root_folder"]
+    
     th_min = config["test_config"]["th_min"]
     th_max = config["test_config"]["th_max"]
     th_max_pre = config["test_config"]["th_max_pre"]
@@ -64,12 +67,15 @@ def evaluate_vlad(vlad, topk=1):
     batch_num = config["test_config"]["batch_num"]
 
     vlad.eval()
-    fea_folder = os.path.join(root, seq, "BEV_FEA")
+    fea_folder = os.path.join(root, seq, "BEV_FEA_TRN_B1")
     vlad_arr = generate_descriptors(vlad, fea_folder, batch_num)
 
     pose = np.genfromtxt(os.path.join(root.replace(
         'sequences', 'poses_semantic'), seq + '.txt'))[:, [3, 11]]
     length = len(pose)
+
+    #topk = max(25, int(length * 1e-2))
+    print(f"evaluate: {seq}, topk: {topk}, len:{length}")
 
     correct_at_k = np.zeros(topk)
     whole_test_size = 0
@@ -101,21 +107,23 @@ def evaluate_vlad(vlad, topk=1):
     return recalls
 
 
-def evaluate_overlapnetvlad(vlad, overlapnetvlad, topk=25, topn=1):
+def evaluate_overlapnetvlad(vlad_arr, overlapnetvlad, seq, topk=25, topn=1):
     config_file = os.path.join(p, './config/config.yml')
     config = yaml.safe_load(open(config_file))
 
-    seq = config["test_config"]["seq"]
-    root = config["data_root"]["data_root_folder"]
+    #seq = config["test_config"]["seq"]
+    root = "/home/fuchencan/datasets/KITTI/datasets/sequences"
+    #root = config["data_root"]["data_root_folder"]
     th_min = config["test_config"]["th_min"]
     th_max = config["test_config"]["th_max"]
     th_max_pre = config["test_config"]["th_max_pre"]
     skip = config["test_config"]["skip"]
     batch_num = config["test_config"]["batch_num"]
 
-    vlad.eval()
-    fea_folder = os.path.join(root, seq, "BEV_FEA")
-    vlad_arr = generate_descriptors(vlad, fea_folder, batch_num)
+    
+    # vlad.eval()
+    # fea_folder = os.path.join(root, seq, "BEV_FEA_TRN_B1")
+    # vlad_arr = generate_descriptors(vlad, fea_folder, batch_num)
 
     feature_files = sorted(os.listdir(fea_folder))
     feature_files = [os.path.join(fea_folder, v) for v in feature_files]
@@ -123,6 +131,10 @@ def evaluate_overlapnetvlad(vlad, overlapnetvlad, topk=25, topn=1):
     pose = np.genfromtxt(os.path.join(root.replace(
         'sequences', 'poses_semantic'), seq + '.txt'))[:, [3, 11]]
     length = len(pose)
+    
+    # topn = max(25, int(length*1e-2))
+    #topk = int(length*1e-2)
+    print(f"evaluate: {seq}, topk: {topk}, topn: {topn}, len:{length}")
 
     correct_at_n = np.zeros(topn)
     whole_test_size = 0
@@ -171,19 +183,39 @@ def evaluate_overlapnetvlad(vlad, overlapnetvlad, topk=25, topn=1):
 
 if __name__ == '__main__':
     vlad = vlad_head().to(device)
-    checkpoint = torch.load(os.path.join(p, "./models/vlad.ckpt"))
-    vlad.load_state_dict(checkpoint['state_dict'])
+    model_file = "/home/fuchencan/OverlapNetVLAD/log/fine/08291041.ckpt"
+    checkpoint = torch.load(model_file)
+    vlad.load_state_dict(checkpoint['state_dict'], strict=False)
 
-    # print("recall@N\n", evaluate_vlad(vlad, topk=25))
+    print("checkpoint ", model_file)
+    
+    #seqs = ["07", "02", "05", "00", "06", "08"]
+    #for seq in seqs:
+    #    print(f"seq: {seq}, recall@N\n", evaluate_vlad(vlad, seq, topk=5))
 
     overlap = overlap_head(32).to(device)
     checkpoint = torch.load(os.path.join(p, "./models/overlap.ckpt"))
     overlap.load_state_dict(checkpoint['state_dict'])
+    
+    seqs = ["00", "02", "05", "06", "07", "08"]
+    kitti_lengths = [4541, 4661, 2761, 1101, 1101, 4071]
+    
+    config_file = os.path.join(p, './config/config.yml')
+    config = yaml.safe_load(open(config_file))
+    root = "/home/fuchencan/datasets/KITTI/datasets/sequences"
+    batch_num = config["test_config"]["batch_num"]
 
-    print(
-        "recall@N\n",
-        evaluate_overlapnetvlad(
-            vlad,
-            overlap,
-            topk=25,
-            topn=1))
+    for s, seq in enumerate(seqs):
+    #    print(f"seq: {seq}, recall@N\n", evaluate_vlad(vlad, seq, topk=5))
+        
+        vlad.eval()
+        fea_folder = os.path.join(root, seq, "BEV_FEA_TRN_B1")
+        vlad_arr = generate_descriptors(vlad, fea_folder, batch_num)
+
+        topks = [10, 15, 20, 25, int(kitti_lengths[s] * 1e-2)]
+        for topk in topks:
+            recalls = evaluate_overlapnetvlad(vlad_arr, overlap, seq, topk=topk, topn=1)
+
+            for i in range(len(recalls)):
+                print(i+1, recalls[i])
+

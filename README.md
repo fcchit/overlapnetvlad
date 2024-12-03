@@ -1,17 +1,17 @@
-# OverlapNetVLAD
+# CFPR
 
 This repository represents the official implementation of the paper:
 
-**OverlapNetVLAD: A Coarse-to-Fine Framework for LiDAR-based Place Recognition**
+**A Coarse-to-Fine Place Recognition Approach using Attention-guided Descriptors and Overlap Estimation**
 
 
-OverlapNetVLAD is a coase-to-fine framework for LiARD-based place recognition, which use global descriptors to propose place candidates, and use overlap prediction to determine the final match.
+CFPR is a coase-to-fine framework for LiARD-based place recognition, which use global descriptors to propose place candidates, and use overlap prediction to determine the final match.
 
 [[Paper]](https://arxiv.org/abs/2303.06881)
 
 ## Instructions
 
-This code has been tested on Ubuntu 18.04 (PyTorch 1.12.1, CUDA 10.2, GeForce GTX 1080Ti).
+This code has been tested on Ubuntu 18.04 (PyTorch 1.12.1, CUDA 10.2).
 
 Pretrained models in [here](https://drive.google.com/drive/folders/1LEGhH38SB9Y7ia_ovYtQ3NzqRMfwJCt1?usp=sharing).
 
@@ -55,11 +55,13 @@ If you find this repo is helpful, please cite:
 
 
 ```
-@InProceedings{Fu_2023_OverlapNetVLAD,
-author = {Fu, Chencan and Li, Lin and Peng, Linpeng and Ma, Yukai and Zhao, Xiangrui and Liu, Yong},
-title = {OverlapNetVLAD: A Coarse-to-Fine Framework for LiDAR-based Place Recognition},
-journal={arXiv preprint arXiv:2303.06881},
-year={2023}
+@inproceedings{fu2024coarse,
+  title={A Coarse-to-Fine Place Recognition Approach using Attention-guided Descriptors and Overlap Estimation},
+  author={Fu, Chencan and Li, Lin and Mei, Jianbiao and Ma, Yukai and Peng, Linpeng and Zhao, Xiangrui and Liu, Yong},
+  booktitle={2024 IEEE International Conference on Robotics and Automation (ICRA)},
+  pages={8493--8499},
+  year={2024},
+  organization={IEEE}
 }
 ```
 

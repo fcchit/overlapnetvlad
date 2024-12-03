@@ -2,7 +2,6 @@ import open3d as o3d
 import numpy as np
 import sys
 import torch
-import torch_scatter
 import random
 
 

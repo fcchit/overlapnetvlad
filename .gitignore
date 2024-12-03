@@ -1,0 +1,4 @@
+*.txt
+*.ckpt
+runs/
+**/**/__pycache__

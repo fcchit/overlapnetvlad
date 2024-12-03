@@ -21,6 +21,12 @@ We use *spconv-cu102=2.1.25*, other version may report error.
 
 The rest requirments are comman and easy to handle.
 
+```shell
+conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=10.2 -c pytorch
+pip install spconv-cu102==2.1.25
+pip install pyymal tqdm open3d tensorboardX
+```
+
 ## Extract features
 
 ```shell

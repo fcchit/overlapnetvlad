@@ -64,11 +64,15 @@ def train(config):
     
     if not pretrained_vlad_model == "":
         checkpoint = torch.load(pretrained_vlad_model)
+<<<<<<< HEAD
         #model_dict = vlad.state_dict()
         #checkpoint = {k: v for k, v in checkpoint.items() if (k in model_dict and 'mlp' not in k)}
         #model_dict.update(checkpoint)
         #vlad.load_state_dict(model_dict)
         vlad.load_state_dict(checkpoint['state_dict'], strict=False)
+=======
+        vlad.load_state_dict(checkpoint['state_dict'])
+>>>>>>> 6d91ec8a27c3585b24d96da6ba3206fc7cd0ec71
 
     batch_num = 0
     for i in range(epoch):

@@ -13,7 +13,7 @@ This code has been tested on the following environment:
 - **PyTorch**: 1.12.1
 - **CUDA**: 10.2
 
-Pretrained models can be found [here](https://drive.google.com/drive/folders/1LEGhH38SB9Y7ia_ovYtQ3NzqRMfwJCt1?usp=sharing). Please download the pretrained models and place them in the `models` folder.
+Pretrained models can be found [**here**](https://drive.google.com/drive/folders/1LEFAZV1Z7rlHmfk7DGtDeX7XgDGRFUzi?usp=sharing). Please download the pretrained models and place them in the `models` folder.
 
 We use the poses file provided by [SEMANTICKITTI](https://www.semantic-kitti.org/dataset.html#download).
 

@@ -12,9 +12,6 @@ from modules.netvlad import NetVLADLoupe
 
 def attention(query, key, value):
     dim = query.shape[1]
-    print('dim', dim)
-    print('q', query.size())
-    print('k', key.size())
     scores = torch.einsum('bdhn,bdhm->bhnm', query, key) / dim**.5
     prob = torch.nn.functional.softmax(scores, dim=-1)
     return torch.einsum('bhnm,bdhm->bdhn', prob, value), prob
@@ -70,7 +67,6 @@ class AttentionalPropagation(torch.nn.Module):
 
     def forward(self, x, source):
         message = self.attn(x, source, source)
-        print("message", type(message), message.size())
         return self.mlp(torch.cat([x, message], dim=1))
 
 
@@ -148,9 +144,6 @@ class backbone(torch.nn.Module):
 class vlad_head(torch.nn.Module):
     def __init__(self) -> None:
         super(vlad_head, self).__init__()
-        #self.conv = torch.nn.Sequential(torch.nn.Conv2d(512, 512, 3, 1, 1),
-        #                                torch.nn.ReLU6(),
-        #                                torch.nn.Conv2d(512, 512, 3, 1, 1))
         self.self_attention = FeatureFuse(512)
         self.vlad = NetVLADLoupe(
             feature_size=512,
@@ -160,22 +153,17 @@ class vlad_head(torch.nn.Module):
             gating=True,
             add_batch_norm=True,
             is_training=True)
-       # self.mlp = MLP([2048, 1024, 256, 64, 32, 2])
     
     def forward(self, x):
-        #x = self.conv(x)
-        #x = x.permute(0, 3, 1, 2)
-        print(x.shape)
         x = x.squeeze(1) 
-        print(x.shape)
         x = x.reshape(x.shape[0], x.shape[1], -1, 1).squeeze(-1)
         x = self.self_attention(x, x)
-        print(x.shape)
         return self.vlad(x.reshape(x.shape[0], x.shape[1], -1, 1))
     
     def pre_dis(self, x):
         dis = self.mlp(x)
         return dis
+
 
 class overlap_head(torch.nn.Module):
     def __init__(self, inchannels=64) -> None:

@@ -98,20 +98,6 @@ def quadruplet_loss_old(q_vec, pos_vec, neg_vec, other_neg, m1, m2):
     mask = (sum_loss > 0)
     return pos_dis, neg_dis, other_dis, torch.sum(
         sum_loss) / (torch.sum(mask) + 1e-6)
-    # return torch.mean(triplet_loss + second_loss)
-
-
-def pose_loss(pos_dis, neg_dis, pre_dis):
-    #print(pos_dis.shape, neg_dis.shape, pre_dis.shape)
-    #pos_dis = pos_dis.cuda()
-    gt_dis = torch.cat([pos_dis, neg_dis], dim=1)
-    #print(pre_dis.shape, gt_dis.shape)
-    loss = torch.nn.L1Loss()
-    loss = loss(pre_dis, gt_dis)
-    #diff = torch.abs(pre_dis-gt_dis).sum(dim=2)
-    #print(diff.shape, diff.shape, loss)
-    #print(loss)
-    return loss
 
 
 if __name__ == "__main__":

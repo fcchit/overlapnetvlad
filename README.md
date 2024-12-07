@@ -99,4 +99,5 @@ If you find this repository helpful, please cite our work:
 
 - [x] Upload pretrained models
 - [x] **Update the code to ICRA version**
+- [x] Add KITTI-360 dataset
 - [ ] ...

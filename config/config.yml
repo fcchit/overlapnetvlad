@@ -9,7 +9,8 @@ extractor_config:
 training_config:
   training_seqs: ["11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21"]
   out_folder: "./outputs"
-  pretrained_vlad_model: "./models/vlad.ckpt"
+  model_name: "AttnVLADHead"
+  pretrained_vlad_model: "./models/attnvlad.ckpt"
   pos_threshold: 10
   neg_threshold: 50
   batch_size: 2

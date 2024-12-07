@@ -86,6 +86,7 @@ def quadruplet_loss(q_vec, pos_vecs, neg_vecs, other_neg, m1, m2, use_min=False,
     total_loss = triplet_loss + second_loss
     return total_loss
 
+
 def quadruplet_loss_old(q_vec, pos_vec, neg_vec, other_neg, m1, m2):
     pos_dis = ((q_vec - pos_vec)**2).sum(dim=1)
     neg_dis = ((q_vec - neg_vec)**2).sum(dim=1)

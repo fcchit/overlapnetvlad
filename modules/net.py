@@ -3,11 +3,12 @@ import spconv.pytorch as spconv
 import os
 import sys
 from copy import deepcopy
+
+from modules.netvlad import NetVLADLoupe
+
 p = os.path.dirname(os.path.dirname((os.path.abspath(__file__))))
 if p not in sys.path:
     sys.path.append(p)
-
-from modules.netvlad import NetVLADLoupe
 
 
 def attention(query, key, value):
@@ -100,13 +101,14 @@ class FeatureFuse(torch.nn.Module):
         super(FeatureFuse, self).__init__()
         self.mutihead_attention = AttentionalPropagation(
             feature_dim, num_heads)
+
     def forward(self, x, source):
         return (x + self.mutihead_attention(x, source))
 
 
-class backbone(torch.nn.Module):
+class Backbone(torch.nn.Module):
     def __init__(self, inchannels=64) -> None:
-        super(backbone, self).__init__()
+        super(Backbone, self).__init__()
         self.dconv_down1 = BottleneckSparse2D(inchannels, inchannels * 2, 11)
         self.dconv_down1_1 = BottleneckSparse2D(inchannels * 2, inchannels * 2,
                                                 11)
@@ -141,9 +143,9 @@ class backbone(torch.nn.Module):
         return x.dense()
 
 
-class vlad_head(torch.nn.Module):
+class AttnVLADHead(torch.nn.Module):
     def __init__(self) -> None:
-        super(vlad_head, self).__init__()
+        super(AttnVLADHead, self).__init__()
         self.self_attention = FeatureFuse(512)
         self.vlad = NetVLADLoupe(
             feature_size=512,
@@ -153,21 +155,21 @@ class vlad_head(torch.nn.Module):
             gating=True,
             add_batch_norm=True,
             is_training=True)
-    
+
     def forward(self, x):
-        x = x.squeeze(1) 
+        x = x.squeeze(1)
         x = x.reshape(x.shape[0], x.shape[1], -1, 1).squeeze(-1)
         x = self.self_attention(x, x)
         return self.vlad(x.reshape(x.shape[0], x.shape[1], -1, 1))
-    
+
     def pre_dis(self, x):
         dis = self.mlp(x)
         return dis
 
 
-class overlap_head(torch.nn.Module):
+class OverlapHead(torch.nn.Module):
     def __init__(self, inchannels=64) -> None:
-        super(overlap_head, self).__init__()
+        super(OverlapHead, self).__init__()
         self.fusenet16 = FeatureFuse(inchannels * 16)
         self.last_conv16 = spconv.SparseSequential(
             spconv.SubMConv2d(inchannels * 16, inchannels * 8, 3, bias=True),

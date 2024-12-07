@@ -1,13 +1,12 @@
+import math
 import os
 import sys
-p = os.path.dirname(os.path.dirname((os.path.abspath(__file__))))
-if p not in sys.path:
-    sys.path.append(p)
-    
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
+p = os.path.dirname(os.path.dirname((os.path.abspath(__file__))))
+if p not in sys.path:
+    sys.path.append(p)
 
 
 class NetVLADLoupe(nn.Module):
@@ -117,15 +116,15 @@ class GatingContext(nn.Module):
 
 if __name__ == '__main__':
     net_vlad = NetVLADLoupe(feature_size=1024, max_samples=360, cluster_size=16,
-                                 output_dim=20, gating=True, add_batch_norm=True,
-                                 is_training=True)
+                            output_dim=20, gating=True, add_batch_norm=True,
+                            is_training=True)
     # input  (bs, 1024, 360, 1)
     torch.manual_seed(1234)
-    input_tensor = F.normalize(torch.randn((1,1024,360,1)), dim=1)
+    input_tensor = F.normalize(torch.randn((1, 1024, 360, 1)), dim=1)
     input_tensor2 = torch.zeros_like(input_tensor)
     input_tensor2[:, :, 2:, :] = input_tensor[:, :, 0:-2, :].clone()
-    input_tensor2[:, :, :2, :]  = input_tensor[:, :, -2:, :].clone()
-    input_tensor2= F.normalize(input_tensor2, dim=1)
+    input_tensor2[:, :, :2, :] = input_tensor[:, :, -2:, :].clone()
+    input_tensor2 = F.normalize(input_tensor2, dim=1)
     input_tensor_com = torch.cat((input_tensor, input_tensor2), dim=0)
 
     # print(input_tensor[0,0,:,0])
@@ -144,11 +143,9 @@ if __name__ == '__main__':
         out2 = net_vlad(input_tensor2)
         print(out2)
         net_vlad.eval()
-        input_tensor3 = torch.randn((1,1024,360,1))
+        input_tensor3 = torch.randn((1, 1024, 360, 1))
         out3 = net_vlad(input_tensor3)
         print(out3)
 
-
-        print(((out1-out2)**2).sum(1))
-        print(((out1-out3)**2).sum(1))
-
+        print(((out1 - out2)**2).sum(1))
+        print(((out1 - out3)**2).sum(1))

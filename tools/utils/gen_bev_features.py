@@ -6,7 +6,7 @@ import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
 
-from modules.overlapnetvlad import backbone
+from modules.net import Backbone
 from tools.utils import utils
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     seqs = config["extractor_config"]["seqs"]
     batch_num = config["extractor_config"]["batch_num"]
 
-    net = backbone(32).to(device)
+    net = Backbone(32).to(device)
     checkpoint = torch.load(ckpt)
     net.load_state_dict(checkpoint['state_dict'])
 

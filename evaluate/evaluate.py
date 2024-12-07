@@ -1,16 +1,16 @@
-import yaml
-from tqdm import tqdm
-import torch
-import sys
-import numpy as np
 import os
-
+import sys
 p = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if p not in sys.path:
     sys.path.append(p)
+import yaml
+import torch
+import numpy as np
+from tqdm import tqdm
 
-from modules.overlapnetvlad import vlad_head, overlap_head
+from modules.net import AttnVLADHead, OverlapHead
 from tools.utils import utils
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -41,7 +41,7 @@ def generate_descriptors(vlad, fea_folder, batch_num):
     return vlad_arr
 
 
-def evaluate_vlad(root, vlad_arr, seq, topk, th_min, th_max, th_max_pre, skip):
+def evaluate_coarse(root, vlad_arr, seq, topk, th_min, th_max, th_max_pre, skip):
     pose = np.genfromtxt(os.path.join(root, seq, "poses.txt"))[:, [3, 11]]
     length = len(pose)
     correct_at_k = np.zeros(topk)
@@ -66,14 +66,14 @@ def evaluate_vlad(root, vlad_arr, seq, topk, th_min, th_max, th_max_pre, skip):
                 if dis_gt < th_max_pre:
                     correct_at_k[k:] += 1
                     break
-    
+
     recall = correct_at_k / whole_test_size if whole_test_size > 0 else np.zeros(topk)
     print(f"Coarse Recall@{topk}: {recall}")
-    
+
     return recall
 
 
-def evaluate_overlapnetvlad(root, vlad_arr, overlapnetvlad, seq, topk, topn, th_min, th_max, th_max_pre, skip):
+def evaluate_coarse_to_fine(root, vlad_arr, net, seq, topk, topn, th_min, th_max, th_max_pre, skip):
     feature_files = sorted(os.listdir(os.path.join(root, seq, "BEV_FEA")))
     feature_files = [os.path.join(root, seq, "BEV_FEA", v) for v in feature_files]
     pose = np.genfromtxt(os.path.join(root, seq, "poses.txt"))[:, [3, 11]]
@@ -103,7 +103,7 @@ def evaluate_overlapnetvlad(root, vlad_arr, overlapnetvlad, seq, topk, topn, th_
                 feaj = utils.load_npy_files([feature_files[k]])
                 with torch.no_grad():
                     feaj = torch.from_numpy(feaj).to(device)
-                    overlap, _ = overlapnetvlad(torch.cat([feai, feaj]).permute(0, 2, 3, 1))
+                    overlap, _ = net(torch.cat([feai, feaj]).permute(0, 2, 3, 1))
                 overlap_scores[k] = overlap.detach().cpu().numpy()
 
             overlap_topns = np.argsort(-overlap_scores)[:topn]
@@ -122,13 +122,13 @@ def evaluate_overlapnetvlad(root, vlad_arr, overlapnetvlad, seq, topk, topn, th_
 if __name__ == "__main__":
     config = load_config(os.path.join(p, "./config/config.yml"))
 
-    vlad = vlad_head().to(device)
+    vlad = AttnVLADHead().to(device)
     model_file = config["training_config"]["pretrained_vlad_model"]
     checkpoint = torch.load(model_file)
     vlad.load_state_dict(checkpoint["state_dict"])
     print("Checkpoint loaded from", model_file)
 
-    overlap = overlap_head(32).to(device)
+    overlap = OverlapHead(32).to(device)
     checkpoint = torch.load(os.path.join(p, "./models/overlap.ckpt"))
     overlap.load_state_dict(checkpoint["state_dict"])
 
@@ -146,15 +146,17 @@ if __name__ == "__main__":
         topks = [1, 10, 15, 20, 25, int(kitti_lengths[seq] * 1e-2)]
         for topk in topks:
             print(f"Evaluate Recall@{topk} of the coarse matching stage")
-            recall = evaluate_vlad(root, vlad_arr, seq, topk=topk,
-                                               th_min=config["evaluate_config"]["th_min"],
-                                               th_max=config["evaluate_config"]["th_max"],
-                                               th_max_pre=config["evaluate_config"]["th_max_pre"],
-                                               skip=config["evaluate_config"]["skip"])
+            recall = evaluate_coarse(root, vlad_arr, seq, topk=topk,
+                th_min=config["evaluate_config"]["th_min"],
+                th_max=config["evaluate_config"]["th_max"],
+                th_max_pre=config["evaluate_config"]["th_max_pre"],
+                skip=config["evaluate_config"]["skip"]
+            )
 
             print(f"Evaluate Recall@{topk} of the whole coarse-to-fine approach")
-            recall = evaluate_overlapnetvlad(root, vlad_arr, overlap, seq, topk=topk, topn=1,
-                                               th_min=config["evaluate_config"]["th_min"],
-                                               th_max=config["evaluate_config"]["th_max"],
-                                               th_max_pre=config["evaluate_config"]["th_max_pre"],
-                                               skip=config["evaluate_config"]["skip"])
+            recall = evaluate_coarse_to_fine(root, vlad_arr, overlap, seq, topk=topk, topn=1,
+                th_min=config["evaluate_config"]["th_min"],
+                th_max=config["evaluate_config"]["th_max"],
+                th_max_pre=config["evaluate_config"]["th_max_pre"],
+                skip=config["evaluate_config"]["skip"]
+            )

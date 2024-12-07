@@ -1,21 +1,15 @@
-from tqdm import tqdm
-from torch.utils.data import DataLoader
-import torch.nn as nn
-import torch
-from tensorboardX import SummaryWriter
-from sklearn import metrics
-import numpy as np
-import yaml
-import time
 import os
-import random
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import yaml
+import torch
+import numpy as np
+from tqdm import tqdm
+from torch.utils.data import DataLoader
+from tensorboardX import SummaryWriter
 
 from tools.database import kitti_dataset
 from modules.loss import triplet_loss
-from modules.overlapnetvlad import vlad_head
-from evaluate import evaluate
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 randg = np.random.RandomState()
@@ -30,6 +24,7 @@ def train(config):
     neg_threshold = config["training_config"]["neg_threshold"]
     batch_size = config["training_config"]["batch_size"]
     epochs = config["training_config"]["epoch"]
+    model_name = config["training_config"]["model_name"]
 
     os.makedirs(out_folder, exist_ok=True)
 
@@ -46,7 +41,13 @@ def train(config):
         shuffle=True, num_workers=0
     )
 
-    vlad = vlad_head().to(device=device)
+    model_module = __import__("modules.net", fromlist=["something"])
+    vlad = getattr(model_module, model_name)().to(device=device)
+
+    if pretrained_vlad_model:
+        checkpoint = torch.load(pretrained_vlad_model)
+        vlad.load_state_dict(checkpoint['state_dict'])
+
     optimizer = torch.optim.Adam(
         filter(lambda p: p.requires_grad, vlad.parameters()),
         lr=1e-5, weight_decay=1e-6
@@ -54,10 +55,6 @@ def train(config):
 
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.99)
     loss_function = triplet_loss
-
-    if pretrained_vlad_model:
-        checkpoint = torch.load(pretrained_vlad_model)
-        vlad.load_state_dict(checkpoint['state_dict'])
 
     step = 0
     for epoch in range(epochs):

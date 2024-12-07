@@ -3,8 +3,6 @@ import torch
 import os
 import numpy as np
 import random
-from scipy.linalg import norm
-from tqdm import tqdm
 
 
 class kitti_dataset(Dataset):
@@ -85,10 +83,7 @@ class kitti_dataset(Dataset):
         return random_neg[minid].tolist()
 
     def get_other_neg(self, id_pos, id_neg):
-        random_neg = list(
-            self.all_ids -
-            self.pairs[id_pos]["negatives"] -
-            self.pairs[id_neg]["negatives"])
+        random_neg = list(self.all_ids - self.pairs[id_pos]["negatives"] - self.pairs[id_neg]["negatives"])
         randid = random.randint(0, len(random_neg) - 1)
         return random_neg[randid]
 
@@ -104,7 +99,7 @@ class kitti_dataset(Dataset):
         fea = np.load(file)
         fea = torch.from_numpy(fea).cuda()
         return fea
-    
+
     def __len__(self):
         return len(self.pairs)
 
@@ -130,11 +125,11 @@ class kitti_dataset(Dataset):
             neg_feas[i] = self.load_fea(negid[i])
 
         return {
-            "id": queryid,
-            "query_desc": query_fea,
-            "pos_desc": pos_feas,
-            "neg_desc": neg_feas,
-            }
+                "id": queryid,
+                "query_desc": query_fea,
+                "pos_desc": pos_feas,
+                "neg_desc": neg_feas,
+               }
 
 
 if __name__ == "__main__":
@@ -142,7 +137,8 @@ if __name__ == "__main__":
         root="/home/fuchencan/datasets/KITTI/datasets/sequences",
         seqs=["99"],
         pos_threshold=10,
-        neg_threshold=50)
+        neg_threshold=50
+    )
     for i in range(len(dataset)):
         d = dataset[random.randint(0, len(dataset) - 1)]
         break

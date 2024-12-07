@@ -70,7 +70,7 @@ For training the backbone network and overlap estimation network, please refer t
 python train/train.py
 ```
 
-The function **evaluate_vlad** is specifically for evaluating the coarse searching method using global descriptors.
+The function **evaluate_coarse** is specifically for evaluating the coarse searching method using global descriptors.
 
 ## Acknowledgements
 

@@ -38,7 +38,7 @@ class kitti_dataset(Dataset):
                 key += 1
             acc_num += len(pose)
         self.all_ids = set(range(len(self.pairs)))
-        self.traing_latent_vectors = torch.zeros((len(self.pairs), 1024)).cuda()
+        self.traing_latent_vectors = torch.zeros((len(self.pairs), 1024))
 
     def get_random_positive(self, idx, num):
         positives = self.pairs[idx]["positives"]
@@ -56,7 +56,7 @@ class kitti_dataset(Dataset):
             return self.get_random_positive(idx, num)
 
         random_pos = self.pairs[idx]["positives"]
-        random_pos = torch.Tensor(random_pos).long().cuda()
+        random_pos = torch.Tensor(random_pos).long()
         latent_vecs = self.traing_latent_vectors[random_pos]
         mask = latent_vecs.sum(dim=1) != 0
         latent_vecs = latent_vecs[mask]
@@ -72,7 +72,7 @@ class kitti_dataset(Dataset):
             return self.get_random_negative(idx, num)
 
         random_neg = list(self.all_ids - self.pairs[idx]["negatives"])
-        random_neg = torch.Tensor(random_neg).long().cuda()
+        random_neg = torch.Tensor(random_neg).long()
         latent_vecs = self.traing_latent_vectors[random_neg]
         mask = latent_vecs.sum(dim=1) != 0
         latent_vecs = latent_vecs[mask]
@@ -97,7 +97,7 @@ class kitti_dataset(Dataset):
         id = str(query["query_id"]).zfill(6)
         file = os.path.join(self.root, seq, "BEV_FEA", id + '.npy')
         fea = np.load(file)
-        fea = torch.from_numpy(fea).cuda()
+        fea = torch.from_numpy(fea)
         return fea
 
     def __len__(self):
@@ -116,11 +116,11 @@ class kitti_dataset(Dataset):
 
         query_fea = self.load_fea(queryid).unsqueeze(0)
 
-        pos_feas = torch.zeros((pos_num, 512, 32, 32)).cuda()
+        pos_feas = torch.zeros((pos_num, 512, 32, 32))
         for i in range(pos_num):
             pos_feas[i] = self.load_fea(posid[i])
 
-        neg_feas = torch.zeros((neg_num, 512, 32, 32)).cuda()
+        neg_feas = torch.zeros((neg_num, 512, 32, 32))
         for i in range(neg_num):
             neg_feas[i] = self.load_fea(negid[i])
 

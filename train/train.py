@@ -42,7 +42,7 @@ def train(config):
     )
     train_loader = DataLoader(
         dataset=train_dataset, batch_size=batch_size,
-        shuffle=True, num_workers=2
+        shuffle=True, num_workers=8
     )
 
     model_module = __import__("modules.net", fromlist=["something"])

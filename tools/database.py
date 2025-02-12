@@ -125,11 +125,11 @@ class KittiDataset(Dataset):
 
         query_fea = self.fea_cache[queryid].unsqueeze(0)
 
-        pos_feas = torch.zeros((pos_num, 512, 32, 32))
+        pos_feas = torch.zeros((pos_num, 512, 32, 32)).cuda()
         for i in range(pos_num):
             pos_feas[i] = self.fea_cache[posid[i]]
 
-        neg_feas = torch.zeros((neg_num, 512, 32, 32))
+        neg_feas = torch.zeros((neg_num, 512, 32, 32)).cuda()
         for i in range(neg_num):
             neg_feas[i] = self.fea_cache[negid[i]]
 

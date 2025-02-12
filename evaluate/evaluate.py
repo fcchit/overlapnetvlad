@@ -149,15 +149,18 @@ if __name__ == "__main__":
         fea_folder = os.path.join(root, seq, "BEV_FEA")
         vlad_arr = generate_descriptors(vlad, fea_folder, batch_num)
 
-        topk = max(25, int(kitti_lengths[seq] * 1e-2))  # for ablation study, Tab.II
-        evaluate_coarse(root, vlad_arr, seq, topk=topk,
-            th_min=config["evaluate_config"]["th_min"],
-            th_max=config["evaluate_config"]["th_max"],
-            th_max_pre=config["evaluate_config"]["th_max_pre"],
-            skip=config["evaluate_config"]["skip"]
-        )
+        # for ablation study, Tab.II
+        # topk = max(25, int(kitti_lengths[seq] * 1e-2))
+        # evaluate_coarse(root, vlad_arr, seq, topk=topk,
+        #     th_min=config["evaluate_config"]["th_min"],
+        #     th_max=config["evaluate_config"]["th_max"],
+        #     th_max_pre=config["evaluate_config"]["th_max_pre"],
+        #     skip=config["evaluate_config"]["skip"]
+        # )
 
-        candidate_nums = [1, 10, 15, 20, 25, int(kitti_lengths[seq] * 1e-2)]  # for ablation study, Tab.III. We use 25 candidates of our final method
+        # for ablation study, Tab.III. We use 25 candidates of our final method
+        # candidate_nums = [1, 10, 15, 20, 25, int(kitti_lengths[seq] * 1e-2)]
+        candidate_nums = [25]
         logger.info(f"Evaluate Recall@1 with topk candidates of the whole coarse-to-fine approach")
         for candidate_num in candidate_nums:
             evaluate_coarse_to_fine(root, vlad_arr, overlap, seq, topk=candidate_num, topn=1,

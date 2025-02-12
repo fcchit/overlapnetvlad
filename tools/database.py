@@ -3,17 +3,21 @@ import torch
 import os
 import numpy as np
 import random
+from tqdm import tqdm
 
 
-class kitti_dataset(Dataset):
+class KittiDataset(Dataset):
     def __init__(self, root, seqs, pos_threshold, neg_threshold) -> None:
         super().__init__()
         self.root = root
         self.seqs = seqs
         self.poses = []
+        self.fea_cache = {}
+        
         for seq in seqs:
             pose = np.genfromtxt(os.path.join(root, seq, 'poses.txt'))[:, [3, 11]]
             self.poses.append(pose)
+        
         self.pairs = {}
         self.randg = np.random.RandomState()
 
@@ -37,8 +41,22 @@ class kitti_dataset(Dataset):
                     "negatives": set(negatives.tolist())}
                 key += 1
             acc_num += len(pose)
+        
         self.all_ids = set(range(len(self.pairs)))
-        self.traing_latent_vectors = torch.zeros((len(self.pairs), 1024)).cuda()
+        self.traing_latent_vectors = torch.zeros((len(self.pairs), 1024))
+
+        # Load all features into memory
+        self.load_all_features()
+
+    def load_all_features(self):
+        for idx in tqdm(range(len(self.pairs)), desc="Loading features"):
+            query = self.pairs[idx]
+            seq = self.seqs[query["query_seq"]]
+            id = str(query["query_id"]).zfill(6)
+
+            # Load feature
+            fea_file = os.path.join(self.root, seq, "BEV_FEA", id + '.npy')
+            self.fea_cache[idx] = torch.from_numpy(np.load(fea_file))
 
     def get_random_positive(self, idx, num):
         positives = self.pairs[idx]["positives"]
@@ -56,7 +74,7 @@ class kitti_dataset(Dataset):
             return self.get_random_positive(idx, num)
 
         random_pos = self.pairs[idx]["positives"]
-        random_pos = torch.Tensor(random_pos).long().cuda()
+        random_pos = torch.Tensor(random_pos).long()
         latent_vecs = self.traing_latent_vectors[random_pos]
         mask = latent_vecs.sum(dim=1) != 0
         latent_vecs = latent_vecs[mask]
@@ -72,7 +90,7 @@ class kitti_dataset(Dataset):
             return self.get_random_negative(idx, num)
 
         random_neg = list(self.all_ids - self.pairs[idx]["negatives"])
-        random_neg = torch.Tensor(random_neg).long().cuda()
+        random_neg = torch.Tensor(random_neg).long()
         latent_vecs = self.traing_latent_vectors[random_neg]
         mask = latent_vecs.sum(dim=1) != 0
         latent_vecs = latent_vecs[mask]
@@ -84,21 +102,12 @@ class kitti_dataset(Dataset):
 
     def get_other_neg(self, id_pos, id_neg):
         random_neg = list(self.all_ids - self.pairs[id_pos]["negatives"] - self.pairs[id_neg]["negatives"])
-        randid = random.randint(0, len(random_neg) - 1)
+        randid = np.random.randint(0, len(random_neg) - 1)
         return random_neg[randid]
 
     def update_latent_vectors(self, fea, idx):
         for i in range(len(idx)):
             self.traing_latent_vectors[idx[i]] = fea[i]
-
-    def load_fea(self, idx):
-        query = self.pairs[idx]
-        seq = self.seqs[query["query_seq"]]
-        id = str(query["query_id"]).zfill(6)
-        file = os.path.join(self.root, seq, "BEV_FEA", id + '.npy')
-        fea = np.load(file)
-        fea = torch.from_numpy(fea).cuda()
-        return fea
 
     def __len__(self):
         return len(self.pairs)
@@ -114,15 +123,15 @@ class kitti_dataset(Dataset):
         posid = self.get_random_hard_positive(queryid, pos_num)
         negid = self.get_random_hard_negative(queryid, neg_num)
 
-        query_fea = self.load_fea(queryid).unsqueeze(0)
+        query_fea = self.fea_cache[queryid].unsqueeze(0)
 
-        pos_feas = torch.zeros((pos_num, 512, 32, 32)).cuda()
+        pos_feas = torch.zeros((pos_num, 512, 32, 32))
         for i in range(pos_num):
-            pos_feas[i] = self.load_fea(posid[i])
+            pos_feas[i] = self.fea_cache[posid[i]]
 
-        neg_feas = torch.zeros((neg_num, 512, 32, 32)).cuda()
+        neg_feas = torch.zeros((neg_num, 512, 32, 32))
         for i in range(neg_num):
-            neg_feas[i] = self.load_fea(negid[i])
+            neg_feas[i] = self.fea_cache[negid[i]]
 
         return {
                 "id": queryid,

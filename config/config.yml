@@ -10,14 +10,16 @@ training_config:
   training_seqs: ["11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21"]
   out_folder: "./outputs"
   model_name: "AttnVLADHead"
-  pretrained_vlad_model: "./models/attnvlad.ckpt"
+  pretrained_vlad_model: ""
   pos_threshold: 10
   neg_threshold: 50
   batch_size: 2
   epoch: 100000
 
 evaluate_config:
-  seqs: ["00", "02", "05", "06", "07"]
+  seqs: ["00", "02", "05", "06", "07", "08"]
+  model_name: "AttnVLADHead"
+  test_vlad_model: "./models/attnvlad.ckpt"
   test_overlap_model: "./models/overlap.ckpt"
   th_min: 0
   th_max: 10

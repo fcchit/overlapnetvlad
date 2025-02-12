@@ -1,4 +1,6 @@
 *.txt
 *.ckpt
+*.h5
+*.log
 runs/
 **/**/__pycache__

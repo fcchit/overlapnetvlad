@@ -4,11 +4,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import yaml
 import torch
 import numpy as np
+from loguru import logger
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from tensorboardX import SummaryWriter
 
-from tools.database import kitti_dataset
+from tools.database import KittiDataset
 from modules.loss import triplet_loss
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -28,9 +29,12 @@ def train(config):
 
     os.makedirs(out_folder, exist_ok=True)
 
+    logger.add(f'{out_folder}/log.txt', format='{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}', encoding='utf-8')
+    logger.info(config)
+
     writer = SummaryWriter()
 
-    train_dataset = kitti_dataset(
+    train_dataset = KittiDataset(
         root=root,
         seqs=training_seqs,
         pos_threshold=pos_threshold,
@@ -38,7 +42,7 @@ def train(config):
     )
     train_loader = DataLoader(
         dataset=train_dataset, batch_size=batch_size,
-        shuffle=True, num_workers=0
+        shuffle=True, num_workers=2
     )
 
     model_module = __import__("modules.net", fromlist=["something"])
@@ -46,7 +50,12 @@ def train(config):
 
     if pretrained_vlad_model:
         checkpoint = torch.load(pretrained_vlad_model)
-        vlad.load_state_dict(checkpoint['state_dict'])
+        vlad.load_state_dict(checkpoint['state_dict'], strict=False)
+        try:
+            resume_epoch = int(pretrained_vlad_model.split('/')[-1].split('.')[0].split('_')[-1])
+        except Exception as e:
+            print(e)
+            resume_epoch = 0
 
     optimizer = torch.optim.Adam(
         filter(lambda p: p.requires_grad, vlad.parameters()),
@@ -57,7 +66,7 @@ def train(config):
     loss_function = triplet_loss
 
     step = 0
-    for epoch in range(epochs):
+    for epoch in range(resume_epoch+1, epochs+1):
         vlad.train()
         for i_batch, sample_batch in tqdm(enumerate(train_loader), total=len(train_loader), desc='Train epoch ' + str(epoch), leave=False):
             optimizer.zero_grad()
@@ -92,7 +101,7 @@ def train(config):
                 writer.add_scalar('LR', optimizer.state_dict()['param_groups'][0]['lr'], global_step=step)
                 step += 1
 
-            if epoch % 10 == 0:
+            if epoch % 5 == 0:
                 torch.save({
                     'epoch': epoch,
                     'state_dict': vlad.state_dict(),

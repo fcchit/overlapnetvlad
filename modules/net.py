@@ -95,17 +95,6 @@ class BottleneckSparse2D(torch.nn.Module):
         return self.relu(y)
 
 
-class FeatureFuse(torch.nn.Module):
-
-    def __init__(self, feature_dim, num_heads=1) -> None:
-        super(FeatureFuse, self).__init__()
-        self.mutihead_attention = AttentionalPropagation(
-            feature_dim, num_heads)
-
-    def forward(self, x, source):
-        return (x + self.mutihead_attention(x, source))
-
-
 class Backbone(torch.nn.Module):
     def __init__(self, inchannels=64) -> None:
         super(Backbone, self).__init__()
@@ -141,6 +130,17 @@ class Backbone(torch.nn.Module):
         x = self.dconv_down3_1(x)
         x = self.dconv_down4(x)
         return x.dense()
+
+
+class FeatureFuse(torch.nn.Module):
+
+    def __init__(self, feature_dim, num_heads=1) -> None:
+        super(FeatureFuse, self).__init__()
+        self.mutihead_attention = AttentionalPropagation(
+            feature_dim, num_heads)
+
+    def forward(self, x, source):
+        return (x + self.mutihead_attention(x, source))
 
 
 class AttnVLADHead(torch.nn.Module):

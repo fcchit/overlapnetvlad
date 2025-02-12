@@ -7,8 +7,9 @@ import yaml
 import torch
 import numpy as np
 from tqdm import tqdm
+from loguru import logger
 
-from modules.net import AttnVLADHead, OverlapHead
+from modules.net import OverlapHead
 from tools.utils import utils
 
 
@@ -47,7 +48,7 @@ def evaluate_coarse(root, vlad_arr, seq, topk, th_min, th_max, th_max_pre, skip)
     correct_at_k = np.zeros(topk)
     whole_test_size = 0
 
-    for i in tqdm(range(length), desc="Evaluating", total=length):
+    for i in tqdm(range(length), desc=f"Evaluate Recall@1~1% of the coarse approach", total=length):
         pos_dis = np.linalg.norm(pose - pose[i], axis=1)
         pos_dis[max(i - skip, 0):] = np.inf
         mask = (pos_dis < th_min)
@@ -68,9 +69,11 @@ def evaluate_coarse(root, vlad_arr, seq, topk, th_min, th_max, th_max_pre, skip)
                     break
 
     recall = correct_at_k / whole_test_size if whole_test_size > 0 else np.zeros(topk)
-    print(f"Coarse Recall@{topk}: {recall}")
-
-    return recall
+    topks = [1, 10, 15, 20, 25, int(kitti_lengths[seq] * 1e-2)]
+    for i, k in enumerate(topks):
+        if k > topk:
+            break
+        logger.info(f"Coarse Recall@{k}: {recall[i]}")
 
 
 def evaluate_coarse_to_fine(root, vlad_arr, net, seq, topk, topn, th_min, th_max, th_max_pre, skip):
@@ -81,7 +84,7 @@ def evaluate_coarse_to_fine(root, vlad_arr, net, seq, topk, topn, th_min, th_max
     correct_at_n = np.zeros(topn)
     whole_test_size = 0
 
-    for i in tqdm(range(length), desc="Evaluating", total=length):
+    for i in tqdm(range(length), desc=f"Evaluate Recall@1 of the whole coarse-to-fine approach", total=length):
         pos_dis = np.linalg.norm(pose - pose[i], axis=1)
         pos_dis[max(i - skip, 0):] = np.inf
         mask = (pos_dis < th_min)
@@ -114,47 +117,50 @@ def evaluate_coarse_to_fine(root, vlad_arr, net, seq, topk, topn, th_min, th_max
                     break
 
     recall = correct_at_n / whole_test_size if whole_test_size > 0 else np.zeros(topn)
-    print(f"Coarse-to-Fine Recall@{topk}: {recall}")
-
-    return recall
+    logger.info(f"Coarse-to-Fine Recall@1 with {topk} candidates): {recall[-1]}")
 
 
 if __name__ == "__main__":
     config = load_config(os.path.join(p, "./config/config.yml"))
+    seqs = config["evaluate_config"]["seqs"]
+    root = config["data_root"]["data_root_folder"]
+    batch_num = config["evaluate_config"]["batch_num"]
+    model_file = config["evaluate_config"]["test_vlad_model"]
+    model_name = config["evaluate_config"]["model_name"]
 
-    vlad = AttnVLADHead().to(device)
-    model_file = config["training_config"]["pretrained_vlad_model"]
+    logfile = model_file.replace('.ckpt', '.log')
+    logger.add(f'{logfile}', format='{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}', encoding='utf-8')
+    logger.info(config)
+
+    model_module = __import__("modules.net", fromlist=["something"])
+    vlad = getattr(model_module, model_name)().to(device=device)
     checkpoint = torch.load(model_file)
     vlad.load_state_dict(checkpoint["state_dict"])
-    print("Checkpoint loaded from", model_file)
+    logger.info(f"Checkpoint loaded from {model_file}")
 
     overlap = OverlapHead(32).to(device)
     checkpoint = torch.load(os.path.join(p, "./models/overlap.ckpt"))
     overlap.load_state_dict(checkpoint["state_dict"])
 
-    seqs = config["evaluate_config"]["seqs"]
-    root = config["data_root"]["data_root_folder"]
-    batch_num = config["evaluate_config"]["batch_num"]
-
     for seq in seqs:
-        print(f"Processing Seq {seq}")
+        logger.info(f"Processing Seq {seq}")
 
         vlad.eval()
         fea_folder = os.path.join(root, seq, "BEV_FEA")
         vlad_arr = generate_descriptors(vlad, fea_folder, batch_num)
 
-        topks = [1, 10, 15, 20, 25, int(kitti_lengths[seq] * 1e-2)]
-        for topk in topks:
-            print(f"Evaluate Recall@{topk} of the coarse matching stage")
-            recall = evaluate_coarse(root, vlad_arr, seq, topk=topk,
-                th_min=config["evaluate_config"]["th_min"],
-                th_max=config["evaluate_config"]["th_max"],
-                th_max_pre=config["evaluate_config"]["th_max_pre"],
-                skip=config["evaluate_config"]["skip"]
-            )
+        topk = max(25, int(kitti_lengths[seq] * 1e-2))  # for ablation study, Tab.II
+        evaluate_coarse(root, vlad_arr, seq, topk=topk,
+            th_min=config["evaluate_config"]["th_min"],
+            th_max=config["evaluate_config"]["th_max"],
+            th_max_pre=config["evaluate_config"]["th_max_pre"],
+            skip=config["evaluate_config"]["skip"]
+        )
 
-            print(f"Evaluate Recall@{topk} of the whole coarse-to-fine approach")
-            recall = evaluate_coarse_to_fine(root, vlad_arr, overlap, seq, topk=topk, topn=1,
+        candidate_nums = [1, 10, 15, 20, 25, int(kitti_lengths[seq] * 1e-2)]  # for ablation study, Tab.III. We use 25 candidates of our final method
+        logger.info(f"Evaluate Recall@1 with topk candidates of the whole coarse-to-fine approach")
+        for candidate_num in candidate_nums:
+            evaluate_coarse_to_fine(root, vlad_arr, overlap, seq, topk=candidate_num, topn=1,
                 th_min=config["evaluate_config"]["th_min"],
                 th_max=config["evaluate_config"]["th_max"],
                 th_max_pre=config["evaluate_config"]["th_max_pre"],
